@@ -5,7 +5,7 @@
 #include "Enums.h"
 #include "ElementParserRegistration.h"
 
-AdaptiveSharedNamespaceStart
+namespace AdaptiveSharedNamespace {
 class TextInput : public BaseInputElement
 {
 public:
@@ -51,4 +51,4 @@ public:
         std::shared_ptr<ActionParserRegistration> actionParserRegistration,
         const std::string& jsonString);
 };
-AdaptiveSharedNamespaceEnd
+}

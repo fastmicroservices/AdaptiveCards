@@ -5,7 +5,7 @@
 #include "json/json.h"
 #include "ElementParserRegistration.h"
 
-AdaptiveSharedNamespaceStart
+namespace AdaptiveSharedNamespace {
 class Fact
 {
 public:
@@ -35,4 +35,4 @@ private:
     std::string m_title;
     std::string m_value;
 };
-AdaptiveSharedNamespaceEnd
+}

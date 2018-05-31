@@ -6,7 +6,7 @@
 #include "ElementParserRegistration.h"
 #include "MediaSource.h"
 
-AdaptiveSharedNamespaceStart
+namespace AdaptiveSharedNamespace {
 class Media : public BaseCardElement
 {
     friend class MediaParser;
@@ -44,4 +44,4 @@ public:
         std::shared_ptr<ActionParserRegistration> actionParserRegistration,
         const std::string& jsonString);
 };
-AdaptiveSharedNamespaceEnd
+}
