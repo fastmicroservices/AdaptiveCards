@@ -27,10 +27,7 @@ export function createActionInstance(json: any): Action {
 
 	var result = AdaptiveCard.actionTypeRegistry.createInstance(actionType);
 
-	if (result) {
-		result.parse(json);
-	}
-	else {
+	if (!result) {
 		raiseParseError(
 			{
 				error: Enums.ValidationError.UnknownActionType,
@@ -1401,6 +1398,11 @@ export class Image extends CardElement {
 
 		if (selectActionJson != undefined) {
 			this.selectAction = createActionInstance(selectActionJson);
+
+			if (this.selectAction) {
+				this.selectAction.setParent(this);
+				this.selectAction.parse(selectActionJson);
+			}
 		}
 	}
 
@@ -2320,6 +2322,8 @@ export abstract class Action {
 	};
 
 	parse(json: any) {
+		raiseParseActionEvent(this, json);
+
 		this.id = json["id"];
 		this.title = json["title"];
 		this.iconUrl = json["iconUrl"];
@@ -2987,10 +2991,12 @@ class ActionCollection {
 	}
 
 	addAction(action: Action) {
-		if (!action.parent) {
+		if ((!action.parent || action.parent === this._owner) && this.items.indexOf(action) < 0) {
 			this.items.push(action);
 
-			action.setParent(this._owner);
+			if (!action.parent) {
+				action.setParent(this._owner);
+			}
 
 			invokeSetCollection(action, this);
 		}
@@ -3110,7 +3116,14 @@ export class ActionSet extends CardElement {
 			var jsonActions = json["actions"] as Array<any>;
 
 			for (var i = 0; i < jsonActions.length; i++) {
-				this.addAction(createActionInstance(jsonActions[i]));
+				let action = createActionInstance(jsonActions[i]);
+
+				if (action) {
+					action.setParent(this);
+					action.parse(jsonActions[i]);
+
+					this.addAction(action);
+				}
 			}
 		}
 	}
@@ -3713,6 +3726,11 @@ export class Container extends CardElementContainer {
 
 		if (selectActionJson != undefined) {
 			this.selectAction = createActionInstance(selectActionJson);
+
+			if (this.selectAction) {
+				this.selectAction.setParent(this);
+				this.selectAction.parse(selectActionJson);
+			}
 		}
 	}
 
@@ -4203,7 +4221,14 @@ export class ColumnSet extends CardElementContainer {
 	updateLayout(processChildren: boolean = true) {
 		super.updateLayout(processChildren);
 
-		this.applyPadding();
+		if (selectActionJson != undefined) {
+			this.selectAction = createActionInstance(selectActionJson);
+
+			if (this.selectAction) {
+				this.selectAction.setParent(this);
+				this.selectAction.parse(selectActionJson);
+			}
+		}
 
 		if (processChildren) {
 			for (var i = 0; i < this._columns.length; i++) {
@@ -4579,6 +4604,15 @@ function raiseParseElementEvent(element: CardElement, json: any) {
 	}
 }
 
+function raiseParseActionEvent(action: Action, json: any) {
+	let card = action.parent ? action.parent.getRootElement() as AdaptiveCard : null;
+	let onParseActionHandler = (card && card.onParseAction) ? card.onParseAction : AdaptiveCard.onParseAction;
+
+	if (onParseActionHandler != null) {
+		onParseActionHandler(action, json);
+	}
+}
+
 function raiseParseError(error: IValidationError) {
 	if (AdaptiveCard.onParseError != null) {
 		AdaptiveCard.onParseError(error);
@@ -4673,6 +4707,9 @@ export abstract class ContainerWithActions extends Container {
 				var action = createActionInstance(jsonActions[i]);
 
 				if (action != null) {
+					action.setParent(this);
+					action.parse(jsonActions[i]);
+
 					this.addAction(action);
 				}
 			}
@@ -4694,7 +4731,9 @@ export abstract class ContainerWithActions extends Container {
 	}
 
 	addAction(action: Action) {
-		this._actionCollection.addAction(action);
+		if (action) {
+			this._actionCollection.addAction(action);
+		}
 	}
 
 	clear() {
@@ -4823,6 +4862,7 @@ export class AdaptiveCard extends ContainerWithActions {
 	static onImageLoaded: (image: Image) => void = null;
 	static onInlineCardExpanded: (action: ShowCardAction, isExpanded: boolean) => void = null;
 	static onParseElement: (element: CardElement, json: any) => void = null;
+	static onParseAction: (element: Action, json: any) => void = null;
 	static onParseError: (error: IValidationError) => void = null;
 
 	static processMarkdown = function (text: string): string {
@@ -4914,6 +4954,7 @@ export class AdaptiveCard extends ContainerWithActions {
 	onImageLoaded: (image: Image) => void = null;
 	onInlineCardExpanded: (action: ShowCardAction, isExpanded: boolean) => void = null;
 	onParseElement: (element: CardElement, json: any) => void = null;
+	onParseAction: (element: Action, json: any) => void = null;
 
 	version?: Version = new Version(1, 0);
 	fallbackText: string;
